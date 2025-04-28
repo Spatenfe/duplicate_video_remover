@@ -14,6 +14,7 @@ if __name__ == '__main__':
         #define settings
         device = 'cuda'
         dir_path = '/home/stud/foef/Hiwi/Video-Sim-VPDQ/example_videos/'
+        threshold_similarity = 0.6
 
         #init models
         feat_extractor = torch.hub.load('gkordo/s2vs:main', 'resnet50_LiMAC')
@@ -65,6 +66,6 @@ if __name__ == '__main__':
                     similarity = s2vs_dns.calculate_video_similarity(query_feature[1], target_feature[1])
 
                     #log combination if similar score threshold is reached
-                    if similarity[0] > 0.6:
+                    if similarity[0] > threshold_similarity:
                         writer.writerow({'name_a': query_feature[0], 'name_b': target_feature[0],
                                          'score': round(float(similarity[0][0]), 2)})

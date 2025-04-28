@@ -1,0 +1,1 @@
+This project is able to find duplicates in a directory of videos. It assigns a similarity score based on https://github.com/gkordo/s2vs and saves video combinations above a certain threshold into a csv file. 
