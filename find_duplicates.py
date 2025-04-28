@@ -94,6 +94,13 @@ if __name__ == '__main__':
             video = torch.from_numpy(load_video(path)).to(device)
             video_features = feat_extractor(video)
 
+            if len(video_features.shape) != 3 or video_features.shape[0] < 1 or video_features.shape[1] != 9 or video_features.shape[2] != 512:
+                print("Skipped " + str(file_name) + " with shape: " + video_features.shape)
+                del video
+                del video_features
+                torch.cuda.empty_cache()
+                continue
+
             feature_array.append((file_name, video_features))
 
             del video
