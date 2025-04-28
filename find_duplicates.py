@@ -1,21 +1,66 @@
-import time
-
 import torch
 import os
-import numpy as np
 import csv
+import argparse
 from tqdm import tqdm
-
 from utils import load_video
 
+parser = argparse.ArgumentParser(description='Video Duplicate Finder')
+
+parser.add_argument('-t', '--similarity_threshold', type=float,
+                    help='Lowest similarity score that the combination is still saved.',
+                  default=0.55)
+parser.add_argument('-d', '--video_dir_path',
+                    help='Directory path that should be checked for duplicates.')
+parser.add_argument('--device',
+                    help='Device to run at.',
+                  default="cpu")
+parser.add_argument('-f', '--check_csv_file_path',
+                    help='Path of the csv file that should be checked. If this flag is not provided all the videos in the directory are used.')
+parser.add_argument('-o', '--out_dir', default='./',
+                    help='Output directory of the csv file')
+parser.add_argument('-l', '--file_limit', type=int,
+                    help='Output directory of the csv file', default=999_999_999)
+
+def print_run_config(args):
+    print("------------------------------------------")
+    print("Running with:")
+    print("similarity_threshold = " + str(args.similarity_threshold))
+    print("device = " + args.device)
+    print("video_dir_path = " + str(args.video_dir_path))
+    print("check_csv_file_path = " + str(args.check_csv_file_path))
+    print("file_limit = " + str(args.file_limit))
+    print("out_dir = " + str(args.out_dir))
+    print("------------------------------------------")
+
+    if args.video_dir_path is None:
+        print("Please provide a --video_dir_path")
+        exit()
+
+def get_file_paths_from_csv(csv_path):
+    file_names = []
+    with open(csv_path, mode='r') as file:
+        csvFile = csv.reader(file)
+        for lines in csvFile:
+            file_names.append(lines[0])
+
+    return file_names
+
 if __name__ == '__main__':
+    args = parser.parse_args()
+
+    print_run_config(args)
+
+    # set args
+    device = args.device
+    threshold_similarity = args.similarity_threshold
+    dir_path = args.video_dir_path
+    csv_file_path = args.check_csv_file_path
+    file_limit = args.file_limit
+    out_dir = args.out_dir
+
     #disable grad for efficient VRAM usage
     with torch.no_grad():
-        #define settings
-        device = 'cuda'
-        dir_path = '/home/stud/foef/Hiwi/Video-Sim-VPDQ/example_videos/'
-        threshold_similarity = 0.6
-
         #init models
         feat_extractor = torch.hub.load('gkordo/s2vs:main', 'resnet50_LiMAC')
         s2vs_dns = torch.hub.load('gkordo/s2vs:main', 's2vs_dns')
@@ -27,16 +72,25 @@ if __name__ == '__main__':
         feat_extractor = feat_extractor.to(device)
 
         #init save architectures
-        video_path_list = os.listdir(dir_path)
+        video_path_list = []
+        if csv_file_path is None:
+            video_path_list = os.listdir(dir_path)
+        else:
+            video_path_list = get_file_paths_from_csv(csv_file_path)
+
+        print("Found " + str(len(video_path_list)) + " video files...")
+
         feature_array = []
 
         #generate all feature embeddings
         print("------------------------------------------")
         print("feature extraction started!")
         print("------------------------------------------")
-        for i in tqdm(range(len(video_path_list))):
+
+        num_of_videos = min(file_limit, len(video_path_list))
+        for i in tqdm(range(num_of_videos)):
             file_name = video_path_list[i]
-            path = dir_path + file_name
+            path = os.path.join(dir_path, file_name)
             video = torch.from_numpy(load_video(path)).to(device)
             video_features = feat_extractor(video)
 
@@ -52,7 +106,7 @@ if __name__ == '__main__':
         print("------------------------------------------")
 
         #init csv save file
-        with open('logs.csv', 'w', newline='') as csvfile:
+        with open(os.path.join(out_dir, 'duplication_analysis_result.csv'), 'w', newline='') as csvfile:
             fieldnames = ['name_a', 'name_b', 'score']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()

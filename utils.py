@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 
+#----------------------------------------------
+#code taken from https://github.com/MKLab-ITI/visil/blob/pytorch/utils.py
+#----------------------------------------------
 
 def center_crop(frame, desired_size):
     if frame.ndim == 3:
